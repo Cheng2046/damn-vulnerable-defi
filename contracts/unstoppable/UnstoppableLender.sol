@@ -14,36 +14,47 @@ interface IReceiver {
  * @author Damn Vulnerable DeFi (https://damnvulnerabledefi.xyz)
  */
 contract UnstoppableLender is ReentrancyGuard {
-
-    IERC20 public immutable damnValuableToken;
-    uint256 public poolBalance;
+    IERC20 public immutable damnValuableToken; //! using IERC20 for DVT
+    uint256 public poolBalance; //! state variables tracking the bal
 
     constructor(address tokenAddress) {
         require(tokenAddress != address(0), "Token address cannot be zero");
-        damnValuableToken = IERC20(tokenAddress);
+        damnValuableToken = IERC20(tokenAddress); //!initialise the contract like I usually do
     }
 
     function depositTokens(uint256 amount) external nonReentrant {
         require(amount > 0, "Must deposit at least one token");
         // Transfer token from sender. Sender must have first approved them.
         damnValuableToken.transferFrom(msg.sender, address(this), amount);
-        poolBalance = poolBalance + amount;
+        poolBalance = poolBalance + amount; //! updating the state variables
     }
+
+    //!.......................the flashLoan Function.......................
 
     function flashLoan(uint256 borrowAmount) external nonReentrant {
         require(borrowAmount > 0, "Must borrow at least one token");
 
-        uint256 balanceBefore = damnValuableToken.balanceOf(address(this));
+        uint256 balanceBefore = damnValuableToken.balanceOf(address(this)); //! current bal from balanceOf, not the state variables
         require(balanceBefore >= borrowAmount, "Not enough tokens in pool");
 
         // Ensured by the protocol via the `depositTokens` function
-        assert(poolBalance == balanceBefore);
-        
+        assert(poolBalance == balanceBefore); //! that's the problem, poolBalance and balanceBefore are from two different source
+
+        // *...... why need to call receiveToken after .transfer??.....
+
         damnValuableToken.transfer(msg.sender, borrowAmount);
-        
-        IReceiver(msg.sender).receiveTokens(address(damnValuableToken), borrowAmount);
-        
+
+        IReceiver(msg.sender).receiveTokens(
+            address(damnValuableToken),
+            borrowAmount
+        );
+
         uint256 balanceAfter = damnValuableToken.balanceOf(address(this));
-        require(balanceAfter >= balanceBefore, "Flash loan hasn't been paid back");
+        require(
+            balanceAfter >= balanceBefore,
+            "Flash loan hasn't been paid back"
+        );
     }
+    //?suppose have to pay back more after the flashLoan?
+    //!.......................the flashLoan Function.......................
 }
