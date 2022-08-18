@@ -15,7 +15,10 @@ interface IReceiver {
  */
 contract UnstoppableLender is ReentrancyGuard {
     IERC20 public immutable damnValuableToken; //! using IERC20 for DVT
-    uint256 public poolBalance; //! state variables tracking the bal
+    uint256 public poolBalance; 
+    
+    //! state variables tracking the bal
+    //! there's an internal accounting for the bal
 
     constructor(address tokenAddress) {
         require(tokenAddress != address(0), "Token address cannot be zero");
@@ -34,7 +37,7 @@ contract UnstoppableLender is ReentrancyGuard {
     function flashLoan(uint256 borrowAmount) external nonReentrant {
         require(borrowAmount > 0, "Must borrow at least one token");
 
-        uint256 balanceBefore = damnValuableToken.balanceOf(address(this)); //! current bal from balanceOf, not the state variables
+        uint256 balanceBefore = damnValuableToken.balanceOf(address(this)); //! current bal from balanceOf, not the state variables (poolBalance)
         require(balanceBefore >= borrowAmount, "Not enough tokens in pool");
 
         // Ensured by the protocol via the `depositTokens` function
